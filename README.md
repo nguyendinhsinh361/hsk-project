@@ -1832,3 +1832,746 @@ async getDataFromChatGPT_ForCheckErrorsGrammar(
 - Sentry integration cho error tracking
 - JSON repair cho response không hợp lệ
 - Fallback mechanism khi API thất bại
+
+## 20. Question Test Module
+
+### 20.1. Mô tả
+Module quản lý các đề thi HSK, bao gồm lấy đề thi theo loại, quản lý danh sách ID đề thi và cập nhật thông tin đề thi.
+
+### 20.2. Database Schema
+
+#### 20.2.1. Question Test Entity
+```sql
+CREATE TABLE questions_test (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title TEXT NOT NULL,
+    title_lang TEXT DEFAULT NULL,
+    parts LONGTEXT DEFAULT NULL,
+    level INT DEFAULT NULL,
+    groups TEXT DEFAULT NULL,
+    score INT DEFAULT NULL,
+    pass_score INT DEFAULT NULL,
+    active INT DEFAULT NULL,
+    time INT DEFAULT NULL,
+    sequence INT DEFAULT NULL,
+    type INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### 20.3. API Endpoints
+
+#### 20.3.1. Get Question Test Custom
+**GET** `/question-test/:questionTestId`
+
+**Mô tả**: Lấy đề thi theo ID
+
+**Query Parameters**:
+- `type`: Loại câu hỏi (0: Listening, 1: Reading, 2: Writing) - Optional
+- `language`: Ngôn ngữ (vi/en/ja/ko/fr/ru) - Default: en
+- `version`: Version (1/2) - Default: 1
+
+**Response**:
+```json
+{
+    "Err": null,
+    "Questions": {
+        "id": 123,
+        "title": "HSK Test 1 (ID: 123)",
+        "time": 60,
+        "parts": [...]
+    }
+}
+```
+
+#### 20.3.2. Get Exam Detail V2
+**GET** `/question-test/exam-detail/:examId`
+
+**Mô tả**: Lấy chi tiết đề thi phiên bản 2
+
+#### 20.3.3. Get List Exam IDs
+**GET** `/question-test/listExamIds/:level`
+
+**Mô tả**: Lấy danh sách ID đề thi theo level
+
+**Response**:
+```json
+{
+    "Err": null,
+    "Questions": [
+        {
+            "id": 123,
+            "title": "HSK4 Test 1",
+            "time": 60,
+            "linkPdfEN": "https://domain.com/hsk4_123.pdf",
+            "linkPdfVI": "https://domain.com/hsk4_123.pdf",
+            "payment_type": "FREE",
+            "tag": "Mới"
+        }
+    ]
+}
+```
+
+#### 20.3.4. Get List Exam IDs by Type
+**POST** `/question-test/list-ids/`
+
+**Mô tả**: Lấy danh sách ID đề thi theo loại
+
+**Request Body**:
+```json
+{
+    "type": "1",
+    "level": "1",
+    "language": "vi",
+    "version": "2"
+}
+```
+
+### 20.4. Question Test Types
+
+#### 20.4.1. Test Kind Enum
+```typescript
+enum QuestionTestKindEnum {
+    FULL_TEST = "1",      // Đề thi đầy đủ
+    SKILL_TEST = "2",     // Đề thi kỹ năng
+    ADVANCE_TEST = "3"    // Đề thi nâng cao
+}
+```
+
+#### 20.4.2. Language Support
+```typescript
+enum LanguageTitleEnum {
+    VI = "vi",    // Tiếng Việt
+    EN = "en",    // Tiếng Anh
+    JA = "ja",    // Tiếng Nhật
+    KO = "ko",    // Tiếng Hàn
+    FR = "fr",    // Tiếng Pháp
+    RU = "ru"     // Tiếng Nga
+}
+```
+
+### 20.5. Features
+
+- **Multi-language Support**: Hỗ trợ đa ngôn ngữ
+- **Version Control**: Quản lý phiên bản title
+- **Premium Content**: Kiểm tra quyền premium
+- **PDF Export**: Liên kết file PDF tiếng Anh và Việt
+- **Free Exam Management**: Quản lý đề thi miễn phí 2025
+
+## 21. Question Management Module
+
+### 21.1. Mô tả
+Module quản lý câu hỏi luyện tập HSK, bao gồm lấy câu hỏi ngẫu nhiên, kiểm tra tồn tài và quản lý nội dung.
+
+### 21.2. Database Schema
+
+#### 21.2.1. Question Entity
+```sql
+CREATE TABLE questions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title TEXT NOT NULL,
+    general LONGTEXT DEFAULT NULL,
+    content LONGTEXT DEFAULT NULL,
+    level INT DEFAULT NULL,
+    level_of_difficult DOUBLE DEFAULT NULL,
+    kind VARCHAR(255) DEFAULT NULL,
+    correct_answers TEXT DEFAULT NULL,
+    check_admin INT DEFAULT NULL,
+    count_question INT DEFAULT NULL,
+    tag TEXT DEFAULT NULL,
+    score INT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    check_explain INT DEFAULT 0,
+    title_trans TEXT DEFAULT NULL,
+    source TEXT DEFAULT NULL,
+    score_difficult DOUBLE DEFAULT 0,
+    total_like INT DEFAULT 0,
+    total_comment INT DEFAULT 0
+);
+```
+
+### 21.3. API Endpoints
+
+#### 21.3.1. Check Question Existence
+**POST** `/question/check-exist`
+
+**Mô tả**: Kiểm tra câu hỏi có tồn tại hay không
+
+**Request Body**:
+```json
+{
+    "ids": ["1", "2", "3"]
+}
+```
+
+**Response**:
+```json
+{
+    "message": "Get questions exist successfully",
+    "data": [1, 2]
+}
+```
+
+#### 21.3.2. Get Practice Questions
+**GET** `/question/get-question-practice`
+
+**Mô tả**: Lấy câu hỏi luyện tập ngẫu nhiên
+
+**Query Parameters**:
+- `device_id`: ID thiết bị - Optional
+- `platforms`: Nền tảng (iOS/Android) - Optional
+- `kind`: Loại câu hỏi - Required
+- `lang`: Ngôn ngữ - Optional
+- `level`: Level HSK - Required
+- `limit`: Số lượng câu hỏi (tối đa 50) - Optional
+
+**Response**:
+```json
+{
+    "Err": null,
+    "Questions": {
+        "Time": 0,
+        "Questions": [
+            {
+                "id": 123,
+                "title": "Question Title",
+                "general": {...},
+                "content": [{
+                    "Q_text": "Question text",
+                    "A_text": ["Answer 1", "Answer 2"],
+                    "A_correct": [1, 0],
+                    "A_more_correct": [1, 0]
+                }]
+            }
+        ]
+    }
+}
+```
+
+### 21.4. Question Types & Validation
+
+#### 21.4.1. Free Access Questions
+```typescript
+const KIND_NOT_LOCK = [
+    "110001", "110002", "120001", "120002",
+    "210001", "210002", "220001", "220002", 
+    "310001", "320001",
+    "410001", "420001",
+    "510001", "520001", 
+    "610001", "620001",
+    "HSKKSC1", "HSKKSC2",
+    "HSKKTC1", "HSKKTC2", 
+    "HSKKCC1", "HSKKCC2"
+]
+```
+
+#### 21.4.2. Multiple Correct Answer Types
+```typescript
+const KIND_HAS_MORE_CORRECT_ANSWER = ["330001", "430001"]
+```
+
+### 21.5. Features
+
+- **Random Question Selection**: Lựa chọn câu hỏi ngẫu nhiên
+- **Premium Validation**: Kiểm tra quyền premium
+- **Multi-kind Support**: Hỗ trợ nhiều loại câu hỏi
+- **Device Tracking**: Theo dõi thiết bị truy cập
+- **Content Filtering**: Lọc nội dung theo admin check
+
+## 22. Question Comments Module
+
+### 22.1. Mô tả
+Module quản lý bình luận cho câu hỏi luyện tập, bao gồm tạo, đọc, vote và báo cáo bình luận.
+
+### 22.2. Database Schema
+
+#### 22.2.1. Question Comment Entity
+```sql
+CREATE TABLE questions_comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    question_id INT NOT NULL,
+    user_id INT NOT NULL,
+    content LONGTEXT NOT NULL,
+    status TINYINT DEFAULT 0,
+    like INT DEFAULT 0,
+    parent_id INT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    language VARCHAR(255) DEFAULT NULL
+);
+```
+
+### 22.3. Comment Features
+
+#### 22.3.1. Hierarchical Comments
+- **Parent Comments**: Bình luận gốc
+- **Child Comments**: Bình luận trả lời
+- **Nested Structure**: Cấu trúc cây bình luận
+
+#### 22.3.2. Voting System
+- **Upvote/Downvote**: Hệ thống vote bình luận
+- **Vote Tracking**: Theo dõi vote của từng user
+- **Vote Counting**: Đếm tổng số vote
+
+#### 22.3.3. Content Moderation
+- **Status Management**: Quản lý trạng thái bình luận
+- **Report System**: Hệ thống báo cáo
+- **Language Support**: Hỗ trợ đa ngôn ngữ
+
+## 23. Theory Management Modules
+
+### 23.1. Theory Notebook Module
+
+#### 23.1.1. Database Schema
+```sql
+CREATE TABLE theory_notebook (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    theory_id INT NOT NULL,
+    level INT,
+    understand_level INT DEFAULT 0,
+    tick INT,
+    click INT,
+    take_note TEXT,
+    kind VARCHAR(255),
+    hanzii VARCHAR(255),
+    word VARCHAR(255),
+    grammar VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_theory_kind (user_id, theory_id, kind),
+    UNIQUE KEY unique_user_word (user_id, word)
+);
+```
+
+#### 23.1.2. API Endpoints
+
+**GET** `/theory-notebook`
+- Lấy danh sách lý thuyết theo option
+- Hỗ trợ phân trang và lọc theo mức độ hiểu biết
+
+**POST** `/theory-notebook`
+- Tạo/Cập nhật ghi chú lý thuyết
+- Hỗ trợ batch update cho nhiều mục cùng lúc
+
+#### 23.1.3. Understanding Levels
+```typescript
+enum UnderstandLevelFilterEnum {
+    DEFAULT = "0",    // Mặc định
+    KNOWN = "1",      // Đã biết  
+    UNKNOWN = "2",    // Không biết
+    UNSURE = "3",     // Không chắc
+}
+```
+
+### 23.2. Theory Lesson Module
+
+#### 23.2.1. Database Schema
+```sql
+CREATE TABLE theory_lesson (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    lesson_id INT NOT NULL,
+    level INT,
+    content TEXT,
+    completed_status INT DEFAULT 0,
+    kind VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_theory (user_id, lesson_id)
+);
+```
+
+#### 23.2.2. API Endpoints
+
+**GET** `/theory-lesson`
+- Lấy danh sách bài học lý thuyết
+- Hỗ trợ phân trang theo level và kind
+
+**POST** `/theory-lesson`  
+- Tạo/Cập nhật tiến độ bài học
+- Hỗ trợ batch update cho nhiều bài học
+
+**GET** `/theory/version`
+- Lấy thông tin version mới nhất của lý thuyết
+
+### 23.3. Theory Features
+
+#### 23.3.1. Content Types
+- **Hanzii**: Học hán tự
+- **Word**: Học từ vựng  
+- **Grammar**: Học ngữ pháp
+
+#### 23.3.2. Progress Tracking
+- **Completion Status**: Trạng thái hoàn thành
+- **Learning Progress**: Tiến độ học tập
+- **Personal Notes**: Ghi chú cá nhân
+
+## 24. Roadmap Management Module
+
+### 24.1. Mô tả
+Module quản lý lộ trình học tập cá nhân hóa cho người dùng, bao gồm tạo, cập nhật và theo dõi tiến độ.
+
+### 24.2. Database Schema
+
+#### 24.2.1. Routes Default Entity
+```sql
+CREATE TABLE routes_default (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    level TEXT,
+    route LONGTEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+#### 24.2.2. Routes User Entity  
+```sql
+CREATE TABLE routes_user (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_user INT,
+    level TEXT,
+    route LONGTEXT,
+    backup LONGTEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### 24.3. API Endpoints
+
+#### 24.3.1. Create Roadmap
+**POST** `/roadmap/create`
+
+**Mô tả**: Tạo lộ trình cá nhân mới cho người dùng
+
+**Query Parameters**:
+```json
+{
+    "level": "1030"
+}
+```
+
+#### 24.3.2. Get Roadmap Detail
+**GET** `/roadmap/detail`
+
+**Mô tả**: Lấy chi tiết lộ trình đang học
+
+**Query Parameters**:
+```json
+{
+    "level": "1"
+}
+```
+
+#### 24.3.3. Update Roadmap Progress
+**PUT** `/roadmap/update`
+
+**Mô tả**: Cập nhật tiến độ lộ trình
+
+**Request Body**:
+```json
+{
+    "id": 123,
+    "id_route": 0,
+    "id_day": 0, 
+    "id_process": 0,
+    "result": {
+        "questions": [
+            {
+                "id": 42531,
+                "true": 1,
+                "false": 0
+            }
+        ],
+        "type": "practice",
+        "time_start_process": 1728060924,
+        "time_end_process": 1728061149,
+        "sum_score": 181,
+        "max_score": 300
+    }
+}
+```
+
+#### 24.3.4. Reset Roadmap
+**PUT** `/roadmap/reset`
+
+**Mô tả**: Xây dựng lại lộ trình từ một điểm
+
+**Query Parameters**:
+```json
+{
+    "id": 123,
+    "index_route": 0
+}
+```
+
+#### 24.3.5. Get Evaluate Exam
+**POST** `/roadmap/evaluate-exam`
+
+**Mô tả**: Lấy bài đánh giá đầu vào
+
+**Query Parameters**:
+```json
+{
+    "level": "1"
+}
+```
+
+### 24.4. Route Structure
+
+#### 24.4.1. Route Interface
+```typescript
+interface IRoute {
+    type: string;
+    kind: string;  
+    max_score: number;
+    min_score: number;
+    difficult: number;
+    count_day: number;
+    practice_per_day: number;
+    id_route: number;
+    status: boolean;
+    detail: IDayDetail[];
+}
+
+interface IDayDetail {
+    day: number;
+    id_day: number;
+    status: boolean;
+    process: IProcess[];
+}
+```
+
+### 24.5. Features
+
+- **Personalized Learning Path**: Lộ trình học tập cá nhân hóa
+- **Progress Tracking**: Theo dõi tiến độ chi tiết
+- **Adaptive Learning**: Điều chỉnh theo kết quả học tập
+- **Multi-level Support**: Hỗ trợ nhiều cấp độ HSK
+- **Backup & Restore**: Sao lưu và khôi phục lộ trình
+
+## 25. User Tracking & Analytics Module
+
+### 25.1. Mô tả
+Module theo dõi hành vi người dùng và phân tích dữ liệu học tập.
+
+### 25.2. Database Schema
+
+#### 25.2.1. User Tracking Entity
+```sql
+CREATE TABLE users_tracking (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    tag VARCHAR(155) NOT NULL,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+### 25.3. API Endpoints
+
+#### 25.3.1. Create User Tracking
+**POST** `/user/userTracking`
+
+**Mô tả**: Tạo thông tin theo dõi người dùng
+
+**Request Body**:
+```json
+{
+    "content": [
+        {
+            "tag": "Attention_Practice100"
+        },
+        {
+            "tag": "Attention_Exam2"
+        }
+    ]
+}
+```
+
+### 25.4. Tracking Tags
+
+#### 25.4.1. Common Tags
+- `Attention_Practice100`: Luyện tập 100 câu
+- `Attention_Exam2`: Thi thử lần 2
+- `Attention_Unit3`: Học bài 3
+- `Attention_Game1`: Chơi game 1
+
+### 25.5. Features
+
+- **Behavior Tracking**: Theo dõi hành vi học tập
+- **Tag-based System**: Hệ thống tag linh hoạt
+- **Duplicate Prevention**: Ngăn chặn trùng lặp dữ liệu
+- **Analytics Ready**: Sẵn sàng cho phân tích
+
+## 26. Wrap-up & Missions Module
+
+### 26.1. Mô tả
+Module quản lý nhiệm vụ và bảng xếp hạng cuối năm, tạo động lực học tập cho người dùng.
+
+### 26.2. Database Schema
+
+#### 26.2.1. Missions Entity
+```sql
+CREATE TABLE missions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sequence_number INT NOT NULL,
+    feature TEXT,
+    mission VARCHAR(255),
+    mission_code VARCHAR(255),
+    description VARCHAR(255),
+    mission_display VARCHAR(255),
+    mission_point VARCHAR(255),
+    type VARCHAR(255),
+    mission_number VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+#### 26.2.2. Missions Users Entity
+```sql
+CREATE TABLE missions_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(255),
+    mission_id INT,
+    mission_name VARCHAR(255),
+    mission_display VARCHAR(255),
+    mission_code VARCHAR(255),
+    mission_kind VARCHAR(255),
+    mission_type VARCHAR(255),
+    mission_level INT,
+    mission_count INT,
+    mission_progress INT,
+    mission_point BIGINT,
+    time_start BIGINT,
+    time_end INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+#### 26.2.3. Ranking Entity
+```sql
+CREATE TABLE ranking (
+    user_id INT PRIMARY KEY,
+    total_scores INT,
+    total_missions INT,
+    email VARCHAR(255),
+    name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### 26.3. API Endpoints
+
+#### 26.3.1. Get Wrap-up Info
+**GET** `/wrapup`
+
+**Mô tả**: Lấy thông tin tổng kết của người dùng
+
+**Response**:
+```json
+{
+    "infoLoginStartTime": "2024-01-01T00:00:00Z",
+    "infoTotalExam": 15,
+    "infoHighestTestScore": 280,
+    "infoTotalQuestionPractice": 1500,
+    "infoTotalExamOnline": 5,
+    "infoInTopUser": 2
+}
+```
+
+#### 26.3.2. Get Missions
+**GET** `/wrapup/mission`
+
+**Mô tả**: Lấy nhiệm vụ theo level
+
+**Query Parameters**:
+```json
+{
+    "level": "1"
+}
+```
+
+#### 26.3.3. Synchronize Missions
+**PUT** `/wrapup/mission/synchronize`
+
+**Mô tả**: Đồng bộ tiến độ nhiệm vụ
+
+**Request Body**:
+```json
+{
+    "synchronizedMission": [
+        {
+            "id": 1,
+            "mission_progress": 5
+        }
+    ]
+}
+```
+
+#### 26.3.4. Get Ranking
+**GET** `/wrapup/mission/ranking`
+
+**Mô tả**: Lấy bảng xếp hạng
+
+**Response**:
+```json
+{
+    "overall_ranking": [
+        {
+            "user_id": 123,
+            "total_scores": 1500,
+            "name": "User A",
+            "rank": 1
+        }
+    ],
+    "current_user_ranking": {
+        "user_id": 456,
+        "total_scores": 800,
+        "rank": 15
+    }
+}
+```
+
+### 26.4. Mission Types
+
+#### 26.4.1. Mission Categories
+- **Free Missions**: Nhiệm vụ miễn phí
+- **Premium Missions**: Nhiệm vụ premium
+- **MIA Missions**: Nhiệm vụ sử dụng AI
+
+#### 26.4.2. Time Slots
+- **Slot 1**: 00:00 - 08:00
+- **Slot 2**: 08:00 - 16:00  
+- **Slot 3**: 16:00 - 00:00
+
+### 26.5. Features
+
+- **Time-based Missions**: Nhiệm vụ theo khung giờ
+- **Dynamic Mission Generation**: Tạo nhiệm vụ động
+- **Progress Tracking**: Theo dõi tiến độ chi tiết
+- **Ranking System**: Hệ thống xếp hạng công bằng
+- **Reward Points**: Hệ thống điểm thưởng
+
+## 27. Other Support Modules
+
+### 27.1. Reason Cancel Module
+- **Purpose**: Thu thập lý do hủy sử dụng dịch vụ
+- **API**: `POST /reason-cancel`
+- **Data**: Lưu trữ feedback từ người dùng
+
+### 27.2. User Synchronized Practice Module  
+- **Purpose**: Đồng bộ lịch sử luyện tập
+- **API**: `GET/PUT /user-synchronized-practice/:historyId`
+- **Features**: Xem và cập nhật lịch sử, tích hợp AI result
+
+### 27.3. Theory Error Report Module
+- **Purpose**: Báo cáo lỗi trong phần lý thuyết
+- **API**: `POST /question/report-theory`
+- **Types**: Từ vựng (0), Ngữ pháp (1)
