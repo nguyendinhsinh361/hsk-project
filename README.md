@@ -23,6 +23,15 @@ src/
 │   ├── v1/            # API version 1
 │   │   ├── chatgpt/   # Tích hợp OpenAI
 │   │   ├── scoring/   # Chấm điểm HSK
+│   │   ├── ai-result/ # Kết quả AI scoring
+│   │   ├── awards/    # Trao giải và khuyến mãi
+│   │   ├── certificate/ # Quản lý chứng chỉ
+│   │   ├── device/    # Quản lý thiết bị
+│   │   ├── divinations/ # Xem bói HSK
+│   │   ├── ebook/     # Quản lý sách điện tử
+│   │   ├── event/     # Sự kiện thi thử online
+│   │   ├── practice-writing/ # Luyện viết
+│   │   ├── purchase/  # Mua gói premium
 │   │   └── ...        # Các modules khác
 │   ├── helper/        # Các utility functions
 │   ├── i18n/          # Đa ngôn ngữ
@@ -399,47 +408,1290 @@ Module chính thực hiện chấm điểm các bài thi HSK với nhiều cấp
 - Cải thiện tính mạch lạc
 - Đảm bảo định dạng chuẩn
 
-## 6. Helper Services
+## 6. AI Result Module
 
-### 6.1. DetailTasksService
+### 6.1. Mô tả
+Module quản lý kết quả chấm điểm AI, lưu trữ và cập nhật lịch sử các bài thi đã được chấm.
 
-#### 6.1.1. File Operations
+### 6.2. Database Schema
+
+#### 6.2.1. AI Result Entity
+```sql
+CREATE TABLE ai_results (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    history_id INT,
+    question_id INT NOT NULL,
+    result TEXT NOT NULL,
+    user_answer TEXT NOT NULL,
+    ai_type INT DEFAULT 1,
+    ids_chatgpt TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### 6.3. API Endpoints
+
+#### 6.3.1. Update AI Result History
+**PUT** `/ai-result`
+
+**Mô tả**: Cập nhật lịch sử chấm điểm cho các câu hỏi
+
+**Headers**:
+- `Authorization`: Bearer token
+
+**Request Body**:
+```json
+{
+    "aiScoringIds": [1, 2, 3, 4],
+    "historyId": "history_id_123"
+}
+```
+
+**Response**:
+```json
+{
+    "message": "Update history for all questions successfully.",
+    "data": {}
+}
+```
+
+### 6.4. Key Features
+
+- **Batch Update**: Cập nhật nhiều kết quả AI cùng lúc
+- **History Tracking**: Theo dõi lịch sử chấm điểm
+- **User Validation**: Kiểm tra quyền sở hữu kết quả
+- **Error Handling**: Xử lý lỗi với Sentry integration
+
+## 7. Awards Module
+
+### 7.1. Mô tả
+Module quản lý trao giải thưởng, khuyến mãi và các sự kiện đặc biệt cho người dùng.
+
+### 7.2. API Endpoints
+
+#### 7.2.1. Custom MIA Awards
+**POST** `/awards/custom-mia`
+
+**Mô tả**: Trao giải MIA tùy chỉnh theo email
+
+**Middleware**: SupportAdminMiddleware
+
+**Request Body**:
+```json
+{
+    "eventName": "Sự kiện dùng thử",
+    "premiumTime": "30",
+    "miaTotal": "10",
+    "emails": ["user1@example.com", "user2@example.com"]
+}
+```
+
+#### 7.2.2. Trial MIA for Current User
+**POST** `/awards/trial-mia`
+
+**Mô tả**: Nhận gói dùng thử MIA cho tài khoản hiện tại
+
+**Request Body**:
+```json
+{
+    "info": "user_info_string"
+}
+```
+
+**Response**:
+```json
+{
+    "message": "Bạn đã nhận thành công lượt dùng thử.",
+    "data": {
+        "purchase_info": "..."
+    }
+}
+```
+
+#### 7.2.3. Get Trial Time
+**POST** `/awards/get-time-trial`
+
+**Mô tả**: Lấy thời gian kích hoạt sự kiện dùng thử
+
+**Response**:
+```json
+{
+    "message": "Get event custom time successfully.",
+    "data": {
+        "startTime": 1718278113000,
+        "endTime": 1719791999000,
+        "serverTime": 1672531200000
+    }
+}
+```
+
+#### 7.2.4. Award Online Test Prize
+**POST** `/awards/award-test-online`
+
+**Mô tả**: Trao giải cho kết quả thi thử online
+
+**Response**:
+```json
+{
+    "message": "Awards Prize successfully !!!",
+    "data": {}
+}
+```
+
+### 7.3. Award Types
+
+#### 7.3.1. Event Name Enum
+```typescript
+enum EventNameEnum {
+    TRIAL_EVENT = "Sự kiện dùng thử",
+    ONLINE_EVENT = "Thi thử online",
+    CUSTOM_ACTIVE = "Kích hoạt tài khoản công ty",
+}
+```
+
+### 7.4. Prize Distribution Logic
+
+- **TOP 1**: 10 lượt MIA + 30 ngày Premium (HSK4-6)
+- **TOP 2-3**: 5 lượt MIA + 14 ngày Premium (HSK4-6)
+- **TOP 4-20**: 1 lượt MIA + 5 ngày Premium (HSK4-6)
+- **Minimum Score**: 50 điểm để nhận giải
+
+## 8. Certificate Module
+
+### 8.1. Mô tả
+Module quản lý chứng chỉ HSK của người dùng, bao gồm tạo, duyệt và chia sẻ chứng chỉ.
+
+### 8.2. Database Schema
+
+#### 8.2.1. Certificate Entity
+```sql
+CREATE TABLE certificates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    username VARCHAR(255),
+    email VARCHAR(255),
+    phone_number VARCHAR(255),
+    certificate_img VARCHAR(255),
+    note TEXT,
+    share INT,
+    active INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+#### 8.2.2. Certificate Time Entity
+```sql
+CREATE TABLE certificates_time (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    start_time BIGINT,
+    end_time BIGINT,
+    active INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### 8.3. API Endpoints
+
+#### 8.3.1. Create Certificate
+**POST** `/certificate`
+
+**Mô tả**: Tạo chứng chỉ mới cho người dùng
+
+**Content-Type**: `multipart/form-data`
+
+**Request Body**:
+```json
+{
+    "username": "Nguyễn Văn A",
+    "email": "user@example.com",
+    "phoneNumber": "0123456789",
+    "note": "Ghi chú",
+    "share": "1",
+    "certificateImg": "file_upload"
+}
+```
+
+#### 8.3.2. Get Certificate Time Setup
+**GET** `/certificate/setup-time`
+
+**Mô tả**: Lấy thời gian thông báo người dùng gửi chứng chỉ
+
+**Response**:
+```json
+{
+    "message": "Get certificate time successfully.",
+    "data": {
+        "startTime": 1704868878000,
+        "endTime": 1707547278000,
+        "serverTime": 1672531200000
+    }
+}
+```
+
+#### 8.3.3. Get All Certificates
+**GET** `/certificate`
+
+**Mô tả**: Lấy ra tất cả các ảnh chứng chỉ đã được duyệt
+
+**Query Parameters**:
+- `page`: Số trang
+- `limit`: Số lượng mỗi trang
+
+**Response**:
+```json
+{
+    "message": "Get all image of certificate successfully",
+    "data": [
+        "https://domain.com/certificate1.jpg",
+        "https://domain.com/certificate2.jpg"
+    ]
+}
+```
+
+#### 8.3.4. Get Notification Status
+**GET** `/certificate/notify`
+
+**Mô tả**: Lấy trạng thái duyệt chứng chỉ
+
+**Response**:
+```json
+{
+    "message": "Get notify of certificate successfully.",
+    "data": {
+        "active": 1,
+        "premiunTime": 30
+    }
+}
+```
+
+### 8.4. Certificate Status
+
+#### 8.4.1. Status Enum
+```typescript
+enum CertificateStatusEnum {
+    ACTIVE = 1,           // Kích hoạt
+    DEACTIVE = -1,        // Không kích hoạt
+    PEDNDING = 0,         // Trạng thái chờ
+    DEACTIVE_PRCCESSED = -2, // Đã xử lý (Không duyệt)
+    ACTIVE_PRCCESSED = 2,    // Đã xử lý (Duyệt)
+}
+```
+
+### 8.5. Features
+
+- **Image Upload**: Upload ảnh chứng chỉ
+- **Status Management**: Quản lý trạng thái duyệt
+- **Sharing Control**: Điều khiển chia sẻ chứng chỉ
+- **Time Management**: Quản lý thời gian nhận chứng chỉ
+- **Premium Reward**: Tặng 30 ngày Premium khi được duyệt
+
+## 9. Device Module
+
+### 9.1. Mô tả
+Module quản lý thông tin thiết bị của người dùng và theo dõi hoạt động.
+
+### 9.2. Database Schema
+
+#### 9.2.1. Users Device Manager Entity
+```sql
+CREATE TABLE users_device_manager (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    device TEXT,
+    device_id TEXT,
+    platforms TEXT,
+    platforms_version TEXT,
+    app_version TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    active INT
+);
+```
+
+### 9.3. Service Methods
+
+#### 9.3.1. Get Device IDs
+```typescript
+async getDeviceId(userId: number): Promise<string[]>
+```
+- Lấy danh sách device IDs của user (tối đa 3 thiết bị)
+
+#### 9.3.2. Save Device Info
+```typescript
+async save(input: DeviceInfo): Promise<any>
+```
+- Lưu thông tin thiết bị mới (không trùng lặp)
+
+#### 9.3.3. Emoji Replacement
+```typescript
+replaceEmoji(str: string): string
+```
+- Thay thế emoji trong chuỗi text bằng ký tự '_'
+
+### 9.4. Features
+
+- **Multi-Device Support**: Hỗ trợ nhiều thiết bị cho một user
+- **Platform Detection**: Phát hiện platform (iOS/Android)
+- **Version Tracking**: Theo dõi phiên bản app và OS
+- **Emoji Handling**: Xử lý emoji trong device names
+
+## 10. Divination Module (Xem Bói HSK)
+
+### 10.1. Mô tả
+Module cung cấp tính năng xem bói dành cho người học HSK, tạo trải nghiệm thú vị và tăng tương tác.
+
+### 10.2. Database Schema
+
+#### 10.2.1. User History Divination Entity
+```sql
+CREATE TABLE user_history_divination (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    info_user_divination_id INT NOT NULL,
+    divination_id INT NOT NULL,
+    content_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+#### 10.2.2. Info User Divination Entity
+```sql
+CREATE TABLE info_user_divination (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    username VARCHAR(255) NOT NULL,
+    birthday VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### 10.3. API Endpoints
+
+#### 10.3.1. Create History Divination
+**POST** `/divination`
+
+**Mô tả**: Tạo lịch sử xem bói cho người dùng
+
+**Request Body**:
+```json
+{
+    "infoUserId": 1,
+    "divinationId": 1,
+    "contentId": 1
+}
+```
+
+#### 10.3.2. List History Divination
+**GET** `/divination`
+
+**Mô tả**: Lấy danh sách lịch sử xem bói
+
+**Response**:
+```json
+[
+    {
+        "divinationId": 1,
+        "userId": 123,
+        "username": "Nguyễn Văn A",
+        "birthday": "14/02/1990",
+        "contentIds": "1,2,3",
+        "createdAt": "2024-01-01"
+    }
+]
+```
+
+#### 10.3.3. Get User Info
+**GET** `/divination/info-user`
+
+**Mô tả**: Lấy thông tin người dùng cho tính năng xem bói
+
+**Response**:
+```json
+{
+    "id": 1,
+    "userId": 123,
+    "username": "Nguyễn Văn A",
+    "birthday": "14/02/1990"
+}
+```
+
+#### 10.3.4. Create User Info
+**POST** `/divination/info-user`
+
+**Mô tả**: Tạo thông tin người dùng cho xem bói
+
+**Request Body**:
+```json
+{
+    "username": "Nguyễn Văn A",
+    "birthday": "14/02/1990"
+}
+```
+
+#### 10.3.5. Get History Detail
+**GET** `/divination/:divinationId`
+
+**Mô tả**: Lấy chi tiết lịch sử xem bói theo ID
+
+**Response**:
+```json
+[
+    {
+        "divinationId": 1,
+        "username": "Nguyễn Văn A",
+        "birthday": "14/02/1990",
+        "contentId": 1,
+        "createdAt": "2024-01-01"
+    }
+]
+```
+
+### 10.4. Features
+
+- **Personal Info Management**: Quản lý thông tin cá nhân cho xem bói
+- **History Tracking**: Theo dõi lịch sử các lần xem bói
+- **Content Grouping**: Nhóm nội dung theo divination ID
+- **Data Validation**: Kiểm tra duplicate và validate data
+
+## 11. Ebook Module
+
+### 11.1. Mô tả
+Module quản lý sách điện tử, hỗ trợ đọc sách, audio và theo dõi tiến độ học tập.
+
+### 11.2. Database Schema
+
+#### 11.2.1. Ebook Entity
+```sql
+CREATE TABLE ebooks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    flag VARCHAR(255) NOT NULL,
+    name TEXT,
+    cover_img_url VARCHAR(255),
+    pdf_url VARCHAR(255),
+    audio_url TEXT,
+    type VARCHAR(255) NOT NULL,
+    type_lang TEXT,
+    author VARCHAR(255),
+    is_free TINYINT DEFAULT 0,
+    priority INT NOT NULL,
+    language VARCHAR(255) NOT NULL,
+    level VARCHAR(255),
+    skill VARCHAR(255),
+    is_open_app TINYINT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+#### 11.2.2. Ebooks Users Entity
+```sql
+CREATE TABLE ebooks_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    favourites TEXT,
+    content TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### 11.3. API Endpoints
+
+#### 11.3.1. Get Ebooks
+**GET** `/ebook`
+
+**Mô tả**: Lấy danh sách ebook theo tùy chọn của user
+
+**Query Parameters**:
+- `page`: Số trang (default: 1)
+- `limit`: Số lượng mỗi trang (default: 10)
+- `lang`: Ngôn ngữ (default: "vi")
+- `filter`: Bộ lọc (all/is_progress/favourite/newest)
+- `type`: Loại sách (all/giáo trình/sách giải trí/...)
+
+**Response**:
+```json
+{
+    "ebooks": [
+        {
+            "id": 1,
+            "name": {"vi": "Sách HSK4", "en": "HSK4 Book"},
+            "cover_img_url": "https://domain.com/cover.jpg",
+            "pdf_url": "https://domain.com/book.pdf",
+            "audio_url": [
+                {"url": "https://domain.com/audio1.mp3"},
+                {"url": "https://domain.com/audio2.mp3"}
+            ],
+            "type": "giáo trình",
+            "author": {"vi": "Tác giả", "en": "Author"},
+            "is_favourite": 1,
+            "progress": 75,
+            "is_downloaded": 1,
+            "page_checkpoint": 150
+        }
+    ],
+    "progress": 5,
+    "completed": 2
+}
+```
+
+#### 11.3.2. Create New Ebook
+**POST** `/ebook`
+
+**Mô tả**: Tạo mới ebook (Admin only)
+
+**Content-Type**: `multipart/form-data`
+
+**Request Body**:
+```json
+{
+    "ebookData": "json_file_upload"
+}
+```
+
+#### 11.3.3. Update Ebook Detail
+**PUT** `/ebook/:ebookId`
+
+**Mô tả**: Cập nhật chi tiết ebook
+
+**Middleware**: SupperKeyMiddleware
+
+**Request Body**:
+```json
+{
+    "cover_img_url": "https://domain.com/new-cover.jpg",
+    "pdf_url": "https://domain.com/new-book.pdf",
+    "audio_url": "https://domain.com/new-audio.mp3"
+}
+```
+
+#### 11.3.4. Synchronize User Ebook
+**POST** `/ebook/synchronize`
+
+**Mô tả**: Đồng bộ ebook với user
+
+**Request Body**:
+```json
+{
+    "synchronizedEbook": [
+        {
+            "ebook_id": 1,
+            "progress": 75,
+            "is_favourite": 1,
+            "page_checkpoint": 150,
+            "is_downloaded": 1
+        }
+    ]
+}
+```
+
+### 11.4. Ebook Types
+
+#### 11.4.1. Type Enum
+```typescript
+enum TypeEbookEnum {
+    DEFAULT = "all",
+    GIAO_TRINH = "giáo trình",
+    SACH_GIAI_TRI = "sách giải trí",
+    SACH_LUYEN_TAP = "sách luyện tập",
+    SACH_LUYEN_THI = "sách luyện thi",
+    SACH_NGU_PHAP = "sách ngữ pháp",
+    SACH_TU_VUNG = "sách từ vựng",
+    TIPS_BI_KIP = "tips/bí kíp"
+}
+```
+
+#### 11.4.2. Filter Options
+```typescript
+enum OptionEbookEnum {
+    DEFAULT = "all",
+    IN_PROGRESS = "is_progress",
+    FAVOURITE = "favourite",
+    NEWEST = "newest",
+}
+```
+
+### 11.5. Features
+
+- **Multi-format Support**: PDF và Audio
+- **Progress Tracking**: Theo dõi tiến độ đọc
+- **Bookmark System**: Lưu vị trí đọc
+- **Favourite Management**: Quản lý sách yêu thích
+- **Download Tracking**: Theo dõi sách đã tải về
+- **Multi-language**: Hỗ trợ đa ngôn ngữ
+- **Audio Sorting**: Sắp xếp file audio theo thứ tự
+
+## 12. Event Module (Thi Thử Online)
+
+### 12.1. Mô tả
+Module quản lý các sự kiện thi thử HSK online, bao gồm ranking, lịch sử thi và theo dõi người dùng.
+
+### 12.2. Database Schema
+
+#### 12.2.1. Event Entity
+```sql
+CREATE TABLE event (
+    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    level INT,
+    kind VARCHAR(225),
+    active INT DEFAULT 1,
+    start BIGINT,
+    end BIGINT,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    count_question INT,
+    time INT,
+    follower_count INT DEFAULT 0
+);
+```
+
+### 12.3. API Endpoints
+
+#### 12.3.1. Get Event List
+**GET** `/event/event-list`
+
+**Mô tả**: Lấy danh sách tất cả sự kiện đang có
+
+**Query Parameters**:
+- `language`: Ngôn ngữ (vi/en/zh-cn/...)
+
+**Response**:
+```json
+{
+    "message": "Get list event successfully !!!",
+    "data": [
+        {
+            "event_id": 1,
+            "kind": "HSK4",
+            "start": 1672531200000,
+            "end": 1672617600000,
+            "count_question": 30,
+            "time": 60,
+            "follower_count": 150,
+            "is_following": 1,
+            "status": 0,
+            "timeServer": 1672531200000,
+            "image": "https://domain.com/event.jpg",
+            "title": "Thi thử HSK4 tháng 1"
+        }
+    ]
+}
+```
+
+#### 12.3.2. Get Event Detail
+**GET** `/event/event-detail`
+
+**Mô tả**: Lấy chi tiết một sự kiện thi thử
+
+**Query Parameters**:
+- `event_id`: ID sự kiện
+- `language`: Ngôn ngữ
+
+**Response**:
+```json
+{
+    "message": "Get event detail successfully !!!",
+    "data": {
+        "event_id": 1,
+        "kind": "HSK4",
+        "start": 1672531200000,
+        "end": 1672617600000,
+        "title": "Thi thử HSK4",
+        "image": "https://domain.com/event.jpg",
+        "test_id": 101,
+        "score": 300,
+        "pass_score": 180,
+        "count_users": 500
+    }
+}
+```
+
+#### 12.3.3. Get Exam Detail
+**GET** `/event/exam-event-detail`
+
+**Mô tả**: Lấy chi tiết đề thi của sự kiện
+
+**Query Parameters**:
+- `exam_event_id`: ID đề thi
+
+**Response**:
+```json
+{
+    "message": "Get event detail successfully !!!",
+    "data": {
+        "test_id": 101,
+        "time": 60,
+        "score": 300,
+        "pass_score": 180,
+        "parts": [
+            {
+                "name": "Listening",
+                "content": [...]
+            }
+        ]
+    }
+}
+```
+
+#### 12.3.4. Get Event History
+**GET** `/event/event-history`
+
+**Mô tả**: Lấy lịch sử thi của user
+
+**Query Parameters**:
+- `event_id`: ID sự kiện
+
+**Response**:
+```json
+{
+    "message": "Get event result history successfully !!!",
+    "data": [
+        {
+            "test_id": 101,
+            "event_id": 1,
+            "answer": [...],
+            "result_score_total": 250,
+            "result_score_parts": [...],
+            "work_time": 3600,
+            "correct_count_question": 25,
+            "count_question": 30,
+            "created_at": "2024-01-01"
+        }
+    ]
+}
+```
+
+#### 12.3.5. Get Ranking
+**GET** `/event/ranking`
+
+**Mô tả**: Lấy bảng xếp hạng sự kiện
+
+**Query Parameters**:
+- `event_id`: ID sự kiện
+- `page`: Số trang
+- `limit`: Số lượng mỗi trang
+
+**Response**:
+```json
+{
+    "message": "Get ranking successfully !!!",
+    "data": {
+        "current_user_ranking": {
+            "user_id": 123,
+            "name": "Nguyễn Văn A",
+            "work_time": 3600,
+            "result_score_total": 250,
+            "score": 300,
+            "rank_index": 15
+        },
+        "event_online_ranking": [
+            {
+                "user_id": 456,
+                "name": "Trần Thị B",
+                "result_score_total": 280,
+                "rank_index": 1
+            }
+        ]
+    }
+}
+```
+
+#### 12.3.6. Complete Exam
+**POST** `/event/complete-exam`
+
+**Mô tả**: Cập nhật kết quả thi
+
+**Request Body**:
+```json
+{
+    "test_id": 101,
+    "event_id": 1,
+    "answers": [
+        {
+            "id": 1,
+            "answer": ["A", "B"],
+            "correct": [1, 0]
+        }
+    ],
+    "work_time": 3600
+}
+```
+
+#### 12.3.7. Follow Event
+**POST** `/event/follow`
+
+**Mô tả**: Theo dõi/Bỏ theo dõi sự kiện
+
+**Request Body**:
+```json
+{
+    "event_id": "1",
+    "follow": 1
+}
+```
+
+### 12.4. Event Status
+
+- **Status 0**: Đang diễn ra
+- **Status 1**: Sắp diễn ra  
+- **Status 2**: Đã kết thúc
+
+### 12.5. Features
+
+- **Real-time Ranking**: Xếp hạng thời gian thực
+- **Multi-part Scoring**: Chấm điểm từng phần
+- **Work Time Tracking**: Theo dõi thời gian làm bài
+- **Follow System**: Hệ thống theo dõi sự kiện
+- **History Management**: Quản lý lịch sử thi
+- **Multi-language Support**: Hỗ trợ đa ngôn ngữ
+
+## 13. Practice Writing Module
+
+### 13.1. Mô tả
+Module hỗ trợ luyện viết HSK với cộng đồng, bao gồm tạo câu hỏi, bình luận và tương tác.
+
+### 13.2. API Endpoints
+
+#### 13.2.1. Get Questions
+**GET** `/practice-writing/question`
+
+**Mô tả**: Lấy nhiều câu hỏi theo trang
+
+**Query Parameters**:
+- `page`: Số trang
+- `limit`: Số lượng mỗi trang
+- `kind`: Loại câu hỏi (430002/530002/530003/630001)
+- `filter`: Bộ lọc (user/comment/like)
+
+**Response**:
+```json
+{
+    "message": "Get questions successfully",
+    "data": [
+        {
+            "id": 1,
+            "content": "Describe the image",
+            "image_url": "https://domain.com/image.jpg",
+            "kind": "430002",
+            "user_name": "User123",
+            "created_at": "2024-01-01",
+            "like_count": 10,
+            "comment_count": 5,
+            "is_liked": 1
+        }
+    ]
+}
+```
+
+#### 13.2.2. Get Comments
+**GET** `/practice-writing/comment/:questionId`
+
+**Mô tả**: Lấy tất cả bình luận của câu hỏi
+
+**Query Parameters**:
+- `page`: Số trang
+- `limit`: Số lượng mỗi trang
+- `filter`: Bộ lọc (upvote)
+
+**Response**:
+```json
+{
+    "message": "Get comments successfully",
+    "data": [
+        {
+            "id": 1,
+            "content": "这是一个很好的答案",
+            "user_name": "Commenter",
+            "created_at": "2024-01-01",
+            "upvote_count": 3,
+            "is_upvoted": 1,
+            "child_count": 2
+        }
+    ]
+}
+```
+
+#### 13.2.3. Get Child Comments
+**GET** `/practice-writing/comment-child/:commentId`
+
+**Mô tả**: Lấy bình luận con của một bình luận
+
+**Response**:
+```json
+{
+    "message": "Get child comments successfully",
+    "data": [
+        {
+            "id": 2,
+            "content": "我同意你的观点",
+            "user_name": "Replier",
+            "parent_id": 1,
+            "created_at": "2024-01-01"
+        }
+    ]
+}
+```
+
+#### 13.2.4. Add Comment
+**POST** `/practice-writing/comment`
+
+**Mô tả**: Thêm bình luận mới
+
+**Request Body**:
+```json
+{
+    "questionId": 1,
+    "content": "这是我的答案：...",
+    "parentId": 0,
+    "language": "zh"
+}
+```
+
+#### 13.2.5. Upvote Comment
+**POST** `/practice-writing/comment/upvote`
+
+**Mô tả**: Like/Unlike bình luận
+
+**Request Body**:
+```json
+{
+    "commentId": 1,
+    "isLike": 1
+}
+```
+
+#### 13.2.6. Upvote Question
+**POST** `/practice-writing/question/upvote`
+
+**Mô tả**: Like/Unlike câu hỏi
+
+**Request Body**:
+```json
+{
+    "questionId": 1,
+    "isLike": 1
+}
+```
+
+#### 13.2.7. Make Question (Premium)
+**POST** `/practice-writing/make-question`
+
+**Mô tả**: Tạo câu hỏi cho người dùng premium
+
+**Content-Type**: `multipart/form-data`
+
+**Query Parameters**:
+- `kind`: Loại câu hỏi
+
+**Request Body**:
+```json
+{
+    "question": "Mô tả hình ảnh này",
+    "img": "file_upload"
+}
+```
+
+#### 13.2.8. Report Comment
+**POST** `/practice-writing/report`
+
+**Mô tả**: Báo cáo bình luận không phù hợp
+
+**Request Body**:
+```json
+{
+    "commentId": 1,
+    "content": "Nội dung không phù hợp"
+}
+```
+
+### 13.3. Question Limits per Day
+
+```typescript
+enum CountQuestionInDay {
+    KIND_430002 = 3,  // HSK4: 3 câu/ngày
+    KIND_530002 = 3,  // HSK5 văn bản: 3 câu/ngày
+    KIND_530003 = 1,  // HSK5 hình ảnh: 1 câu/ngày
+    KIND_630001 = 1,  // HSK6: 1 câu/ngày
+}
+```
+
+### 13.4. Features
+
+- **Community Questions**: Cộng đồng câu hỏi luyện tập
+- **Hierarchical Comments**: Bình luận có cấu trúc cây
+- **Voting System**: Hệ thống vote câu hỏi và bình luận
+- **Premium Question Creation**: Tạo câu hỏi cho user premium
+- **Content Moderation**: Báo cáo nội dung không phù hợp
+- **Multi-language Support**: Hỗ trợ đa ngôn ngữ
+- **Rate Limiting**: Giới hạn số câu hỏi tạo mỗi ngày
+
+## 14. Purchase Module (IAP)
+
+### 14.1. Mô tả
+Module xử lý mua hàng trong ứng dụng (In-App Purchase) cho cả iOS và Android, cũng như thanh toán ngân hàng.
+
+### 14.2. Database Schema
+
+#### 14.2.1. Purchase Entity
+```sql
+CREATE TABLE purchase (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_user INT,
+    product_id TEXT,
+    platforms VARCHAR(20),
+    purchase_date BIGINT,
+    time_expired BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    active INT DEFAULT 1,
+    appStoreReceipt LONGTEXT,
+    transaction_id TEXT,
+    product_id_sale TEXT,
+    exchange INT DEFAULT 0,
+    note TEXT,
+    admin_id INT,
+    country VARCHAR(2),
+    price_sale INT DEFAULT 0,
+    platform_pred VARCHAR(20),
+    mia_total INT DEFAULT 0,
+    product_type INT DEFAULT 1,
+    bank INT DEFAULT 1,
+    affiliate_code VARCHAR(50),
+    affiliate_package_key VARCHAR(50),
+    affiliate_discount INT,
+    origin_mia_total INT DEFAULT 0,
+    transaction_code VARCHAR(255)
+);
+```
+
+### 14.3. API Endpoints
+
+#### 14.3.1. Verify Google Play Purchase
+**POST** `/purchase/verifiedGoogleStore`
+
+**Mô tả**: Xác thực giao dịch Google Play Store
+
+**Request Body**:
+```json
+{
+    "subscriptionId": "migii_hsk_mia_lifetime",
+    "token": "google_play_token",
+    "device_id": "device_123",
+    "device": "Samsung Galaxy S21",
+    "platforms_version": "Android 12",
+    "app_version": "1.0.0",
+    "affiliate": {
+        "code": "AFF123",
+        "package_key": "PKG456",
+        "discount": 10
+    }
+}
+```
+
+**Response**:
+```json
+{
+    "premium": {
+        "purchase_date": 1672531200000,
+        "time_expired": 1672617600000,
+        "product_id": "migii_hsk_mia_lifetime"
+    }
+}
+```
+
+#### 14.3.2. Verify Apple App Store Purchase
+**POST** `/purchase/verifiedAppleStore`
+
+**Mô tả**: Xác thực giao dịch Apple App Store
+
+**Request Body**:
+```json
+{
+    "receipt": "apple_receipt_data",
+    "type": "sandbox",
+    "device_id": "device_123",
+    "device": "iPhone 13",
+    "platforms_version": "iOS 15.0",
+    "app_version": "1.0.0",
+    "affiliate": {
+        "code": "AFF123",
+        "package_key": "PKG456",
+        "discount": 10
+    }
+}
+```
+
+#### 14.3.3. Banking Active Premium
+**POST** `/purchase/bankingActive`
+
+**Mô tả**: Kích hoạt premium qua chuyển khoản ngân hàng
+
+**Middleware**: BankingActiveKeyMiddleware
+
+**Request Body**:
+```json
+{
+    "virtual_bill": {
+        "id": "bill_id",
+        "user_id": "123",
+        "email": "user@example.com",
+        "product_id": "migii_hsk_mia_lifetime",
+        "price": "878000",
+        "currency": "VND",
+        "transaction_code": "TX123456",
+        "project_id": "MHSK",
+        "affiliate": {
+            "affiliate_code": "AFF123",
+            "affiliate_package_key": "PKG456",
+            "affiliate_discount": "10"
+        }
+    },
+    "transaction": {
+        "transactionStatus": "SUCCESS",
+        "transactionChannel": "ACB",
+        "transactionCode": "TX123456",
+        "accountNumber": "12345678",
+        "transactionDate": "2024-01-01T00:00:00Z",
+        "effectiveDate": "2024-01-01T00:00:00Z",
+        "debitOrCredit": "CREDIT",
+        "amount": 878000,
+        "transactionContent": "MIGII HSK TX123456",
+        "transactionEntityAttribute": {
+            "receiverBankName": "ACB",
+            "issuerBankName": "Vietcombank",
+            "remitterName": "Nguyen Van A",
+            "remitterAccountNumber": "87654321"
+        }
+    }
+}
+```
+
+#### 14.3.4. Get Virtual Bill
+**POST** `/purchase/virtualBill`
+
+**Mô tả**: Lấy thông tin đơn thanh toán ảo
+
+**Request Body**:
+```json
+{
+    "product_id": "migii_hsk_mia_lifetime",
+    "price": 878000,
+    "affiliate": {
+        "affiliate_code": "AFF123",
+        "affiliate_package_key": "PKG456",
+        "affiliate_discount": "10"
+    }
+}
+```
+
+#### 14.3.5. Affiliate Orders
+**POST** `/purchase/affiliateOrder`
+
+**Mô tả**: Lấy danh sách đơn hàng affiliate
+
+**Request Body**:
+```json
+{
+    "key_project": "migii-hsk-affiliate",
+    "start_time": 1570966746000,
+    "end_time": 1770966746000
+}
+```
+
+### 14.4. Product Configuration
+
+#### 14.4.1. MIA Products
+```typescript
+const PURCHARSE_MIA_DETAIL = {
+    "mia_token": 200,      // 200 lượt chấm
+    "mia_1month": 250,     // 250 lượt chấm + 1 tháng premium
+    "mia_3months": 250,    // 250 lượt chấm + 3 tháng premium
+    "mia_12months": 300,   // 300 lượt chấm + 12 tháng premium
+    "mia_lifetime": 400    // 400 lượt chấm + premium vĩnh viễn
+}
+```
+
+#### 14.4.2. Product Types
+```typescript
+enum ProductTypeEnum {
+    PRODUCT_TYPE_STANDARD = 1,  // Gói premium thông thường
+    PRODUCT_TYPE_MIA = 2        // Gói MIA với lượt chấm AI
+}
+```
+
+### 14.5. Purchase Flow
+
+#### 14.5.1. Mobile IAP Flow
+1. User mua gói trong app (iOS/Android)
+2. App gửi receipt/token lên server
+3. Server verify với Apple/Google
+4. Tạo purchase record trong database
+5. Kích hoạt premium cho user
+
+#### 14.5.2. Banking Flow
+1. User tạo virtual bill
+2. Chuyển khoản theo thông tin
+3. Ngân hàng webhook notify server
+4. Server verify transaction
+5. Kích hoạt premium cho user
+
+### 14.6. Features
+
+- **Multi-platform Support**: iOS, Android, Web
+- **Receipt Verification**: Xác thực với Apple/Google
+- **Banking Integration**: Thanh toán qua ngân hàng
+- **Affiliate System**: Hệ thống tiếp thị liên kết
+- **Premium Stacking**: Cộng dồn thời gian premium
+- **MIA Token Management**: Quản lý lượt chấm AI
+- **Anti-fraud**: Chống gian lận giao dịch
+- **Telegram Notifications**: Thông báo giao dịch qua Telegram
+
+## 15. Helper Services
+
+### 15.1. DetailTasksService
+
+#### 15.1.1. File Operations
 - `readJsonFile(filePath)`: Đọc file JSON
 - `writeJsonFile(filePath, jsonData)`: Ghi file JSON  
 - `readFileLines(filePath)`: Đọc file theo từng dòng
 
-#### 6.1.2. Text Processing
+#### 15.1.2. Text Processing
 - `checkSpacesBeginOfLines(text)`: Kiểm tra khoảng trắng đầu dòng
 - `removePersonalOpinionSentences(text)`: Loại bỏ câu ý kiến cá nhân
 - `extractChineseCharacters(text)`: Trích xuất ký tự Trung Quốc
 - `countTokenText(text)`: Đếm token trong text
 
-#### 6.1.3. Data Processing
+#### 15.1.3. Data Processing
 - `getRandomSubarray(arr, size)`: Lấy mảng con ngẫu nhiên
 - `uniqueObjectsByTerm(arr)`: Loại bỏ object trùng lặp
 - `checkUpgradeObj_HSK6(upgradeObjHSK6)`: Validate object HSK6
 - `containsLatin(text)`: Kiểm tra có chứa ký tự Latin
 
-### 6.2. KeyValueService
+### 15.2. KeyValueService
 
-#### 6.2.1. Internationalization Methods
+#### 15.2.1. Internationalization Methods
 - `getValueFromKeyEnum(languageCode, keyword)`: Lấy giá trị theo ngôn ngữ
 - `getValueFromKeyInputRoleChatGPTEnum(languageCode, keyword)`: Lấy prompt role
 - `getValueFromKeyCriteriaEnum(languageCode, keyword)`: Lấy tiêu chí đánh giá
 
-## 7. Cache Module
+## 16. Cache Module
 
-### 7.1. CacheService
+### 16.1. CacheService
 
-#### 7.1.1. Redis Operations
+#### 16.1.1. Redis Operations
 - `get(key)`: Lấy giá trị từ cache
 - `set(key, value, ttl?)`: Lưu vào cache với TTL tùy chọn
 - `delete(key)`: Xóa khỏi cache
 - `onModuleInit()`: Reset Redis khi khởi động
 
-## 8. Data Validation với Zod
+## 17. Data Validation với Zod
 
-### 8.1. Schema Definitions
+### 17.1. Schema Definitions
 
 ```typescript
 // Grammatical Range Schema
@@ -478,87 +1730,261 @@ const ADVANCED_REWRITTEN_PARAGRAPH_SCHEMA = z.object({
 });
 ```
 
-## 9. Security & Middleware
+## 18. Security & Middleware
 
-### 9.1. Authentication
+### 18.1. Authentication
 - JWT-based authentication với custom prefix
 - Token storage trong database với TTL
 - Multiple token support cho mỗi user
 
-### 9.2. Middleware Protection
+### 18.2. Middleware Protection
 - `UserIdMiddleware`: Xác thực user ID từ token
 - `LimitedRequestsMiddleware`: Giới hạn số request
 - `SupperKeyMiddleware`: Bảo vệ super key endpoints
 - `TimeoutInterceptor`: Timeout protection (1 phút)
+- `BankingActiveKeyMiddleware`: Bảo vệ banking endpoints
 
-### 9.3. Rate Limiting
+### 18.3. Rate Limiting
 - Áp dụng cho các endpoint scoring sensitive
 - Custom decorators để extract thông tin từ headers
 
-## 10. Purchase & MIA Token System
+## 19. OpenAI Service Integration
 
-### 10.1. MIA Token Types
+### 19.1. Mô tả
+Service tích hợp với OpenAI API để thực hiện các tác vụ chấm điểm và phân tích văn bản.
+
+### 19.2. Core Methods
+
+#### 19.2.1. HSK5 Scoring Methods
+```typescript
+async getDataFromChatGPT_HSK5_530003(
+    messages: any, 
+    jsonSchema: any, 
+    languageCode: I18NEnum = I18NEnum.EN,
+    model: ChatGPTModelEnum = ChatGPTModelEnum.GPT_4O_MINI,
+    temperature = ChatGPTTemperatureEnum.T1
+): Promise<any>
+```
+
+```typescript
+async getDataFromChatGPT_HSK5_530002(
+    requiredWords: string,
+    messages: any, 
+    jsonSchema: any, 
+    languageCode: I18NEnum = I18NEnum.EN,
+    model: ChatGPTModelEnum = ChatGPTModelEnum.GPT_4O_MINI,
+    temperature = ChatGPTTemperatureEnum.T1
+): Promise<any>
+```
+
+#### 19.2.2. HSK6 Scoring Method
+```typescript
+async getDataFromChatGPT_HSK6_630001(
+    messages: any, 
+    jsonSchema: any, 
+    languageCode: I18NEnum = I18NEnum.EN,
+    model: ChatGPTModelEnum = ChatGPTModelEnum.GPT_4O_MINI,
+    temperature = ChatGPTTemperatureEnum.T1
+): Promise<any>
+```
+
+#### 19.2.3. Error Checking Methods
+```typescript
+async getDataFromChatGPT_ForCheckErrorsSpelling(
+    messages: any, 
+    jsonSchema: any, 
+    languageCode: I18NEnum = I18NEnum.EN,
+    model: ChatGPTModelEnum = ChatGPTModelEnum.GPT_4O_MINI,
+    temperature = ChatGPTTemperatureEnum.T1
+): Promise<any>
+```
+
+```typescript
+async getDataFromChatGPT_ForCheckErrorsGrammar(
+    messages: any, 
+    jsonSchema: any, 
+    languageCode: I18NEnum = I18NEnum.EN,
+    model: ChatGPTModelEnum = ChatGPTModelEnum.GPT_4O_MINI,
+    temperature = ChatGPTTemperatureEnum.T1
+): Promise<any>
+```
+
+### 19.3. Key Features
+
+#### 19.3.1. Retry Mechanism
+- Tự động retry tối đa 3 lần khi gặp lỗi
+- Validation kết quả trước khi trả về
+- Logging chi tiết các lần thử
+
+#### 19.3.2. Content Filtering
+- Lọc từ ngữ không phù hợp (trợ từ, giới từ, liên từ)
+- Kiểm tra độ dài từ (tối đa 4 ký tự)
+- Phát hiện từ trùng lặp
+- Loại bỏ từ bắt buộc khỏi danh sách lỗi
+
+#### 19.3.3. Quality Assurance
+- Kiểm tra số lượng vocabulary suggestions tối thiểu
+- Kiểm tra số lượng sentence suggestions tối thiểu
+- Validate độ dài câu trả lời
+- Kiểm tra có chứa ký tự Latin trong explanation
+
+### 19.4. Error Handling
+- Sentry integration cho error tracking
+- JSON repair cho response không hợp lệ
+- Fallback mechanism khi API thất bại
+
+## 20. File Service
+
+### 20.1. Mô tả
+Service quản lý file và logging hệ thống.
+
+### 20.2. Core Methods
+
+#### 20.2.1. File Management
+```typescript
+async addValueToFile(value: any, fileName: string): Promise<void>
+```
+- Thêm nội dung vào file log với timestamp
+- Tự động tạo thư mục nếu không tồn tại
+
+#### 20.2.2. Folder Operations
+```typescript
+private async deleteFolderRecursive(path: string): Promise<void>
+```
+- Xóa thư mục và tất cả nội dung bên trong
+- Được gọi khi khởi động module
+
+### 20.3. Logging Features
+- **Automatic Timestamping**: Tự động thêm timestamp
+- **Directory Management**: Tự động tạo/xóa thư mục logs
+- **JSON Formatting**: Format đẹp cho JSON data
+- **Startup Cleanup**: Xóa logs cũ khi khởi động
+
+## 21. Purchase & MIA Token System
+
+### 21.1. MIA Token Types
 - **MIA Premium**: Gói cơ bản
 - **MIA Token**: Gói token riêng lẻ  
 - **MIA Custom**: Gói tùy chỉnh
 
-### 10.2. Usage Flow
+### 21.2. Usage Flow
 1. Kiểm tra lượt chấm còn lại
 2. Thực hiện chấm điểm
 3. Trừ lượt chấm sau khi thành công
 4. Cập nhật số lượt còn lại
 
-## 11. Error Handling
+### 21.3. Purchase Priority System
 
-### 11.1. Error Types
+#### 21.3.1. Premium Products Priority
+```typescript
+const priorityDataPre = [
+    'preforevermonths', 'migii_hsk_lifetime_auto_sale50', 'preforevermonths_event',
+    'pre12months', 'migii_hsk_12months_auto_sale70', 'migii_hsk_12months_auto_sale60', 
+    'pre12months_event', 'pre6months', 'pre3months',
+    'pre3months_event', 'pre1months', 'pre1months_event',
+    'pre15days', 'pre10days', 'pre7days',
+    'pre5days', 'pre5days_event'
+]
+```
+
+#### 21.3.2. MIA Products Priority
+```typescript
+const priorityDataMia = [
+    'migii_hsk_mia_lifetime', 'migii_hsk_mia_12months', 'migii_hsk_mia_3months', 'migii_hsk_mia_1months',
+    'migii_hsk_mia_token', 'migii_hsk_mia_custom'
+]
+```
+
+### 21.4. Advanced Purchase Logic
+- **Product Mapping**: Map sản phẩm thực tế với sản phẩm chuẩn
+- **Priority Selection**: Chọn sản phẩm có độ ưu tiên cao nhất
+- **Mixed Package Handling**: Xử lý gói MIA custom có cả premium và token
+- **Lifetime Package Detection**: Phát hiện và ưu tiên gói lifetime
+
+## 22. Error Handling
+
+### 22.1. Error Types
 - **INVALID**: Dữ liệu đầu vào không hợp lệ
 - **PICTURE_INVALID**: Hình ảnh không tồn tại
 - **OUT_OF_TURNS**: Hết lượt chấm
 - **TIMEOUT**: Quá thời gian xử lý
 
-### 11.2. Error Monitoring
+### 22.2. Error Monitoring
 - **Sentry Integration**: Theo dõi lỗi tự động
 - **File Logging**: Ghi log chi tiết để debug
 - **Structured Responses**: Phản hồi lỗi có cấu trúc
 
-## 12. Multi-language Support (I18N)
+### 22.3. Error Response Format
+```json
+{
+    "statusCode": 400,
+    "message": "Detailed error message",
+    "data": {},
+    "timestamp": "2024-01-01T00:00:00.000Z"
+}
+```
 
-### 12.1. Supported Languages
+## 23. Multi-language Support (I18N)
+
+### 23.1. Supported Languages
 - **English (EN)**: Ngôn ngữ mặc định cho người dùng quốc tế
 - **Vietnamese (VI)**: Ngôn ngữ cho người dùng Việt Nam
+- **Chinese Simplified (ZH-CN)**: Tiếng Trung giản thể
+- **Chinese Traditional (ZH-TW)**: Tiếng Trung phồn thể
+- **Spanish (ES)**: Tiếng Tây Ban Nha
+- **French (FR)**: Tiếng Pháp
+- **Korean (KO)**: Tiếng Hàn
+- **Japanese (JA)**: Tiếng Nhật
 
-### 12.2. Localized Content
+### 23.2. Localized Content
 - Prompt templates cho ChatGPT
 - Error messages
 - Evaluation criteria descriptions
 - Overall evaluation feedback
+- Event descriptions và titles
+- Certificate notifications
 
-## 13. Configuration
+### 23.3. Language Detection
+- Automatic language detection từ user settings
+- Fallback to default language khi không hỗ trợ
+- Context-aware language selection
 
-### 13.1. Database Configuration
+## 24. Configuration
+
+### 24.1. Database Configuration
 - MySQL với TypeORM
 - Database: `admin_hsk`
 - Connection pooling và optimization
+- Multi-table relationships với foreign keys
 
-### 13.2. JWT Configuration
+### 24.2. JWT Configuration
 - Secret: Configurable via environment
 - No expiration (noTimestamp: true)
 - Custom prefix format: `${userId}.${token}`
 
-### 13.3. OpenAI Configuration
+### 24.3. OpenAI Configuration
 - Base URL: `https://api.openai.com/v1`
 - Multiple model support
 - Temperature settings (0-2)
 - Usage tracking và cost management
+- Project-specific API keys
 
-## 14. Deployment & Environment
+### 24.4. File Upload Configuration
+- **Image Upload**: JPG, PNG, GIF, BMP
+- **Document Upload**: JSON, Excel files
+- **Size Limits**: Configurable per endpoint
+- **Storage**: Local filesystem với URL mapping
 
-### 14.1. Environment Variables
+## 25. Deployment & Environment
+
+### 25.1. Environment Variables
 ```env
 # Database
 DATABASE_HOST=localhost
 DATABASE_PORT=3306
 DATABASE_NAME=admin_hsk
+DATABASE_USERNAME=username
+DATABASE_PASSWORD=password
 
 # JWT
 JWT_SECRET=your_jwt_secret_here
@@ -569,30 +1995,64 @@ OPENAI_API_KEY=your_openai_key_here
 # Redis (optional)
 REDIS_HOST=localhost
 REDIS_PORT=6379
+
+# App Configuration
+APP_DOMAIN=https://your-domain.com
+APP_PORT=3000
+
+# Google Play
+GOOGLE_PLAY_PUBLIC_KEY=your_google_play_key
+
+# Apple App Store
+APP_STORE_PASS=your_app_store_password
+
+# Banking
+BANKING_ACTIVE_KEY=your_banking_key
+
+# Telegram
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
 ```
 
-### 14.2. File Structure Requirements
+### 25.2. File Structure Requirements
 ```
 uploads/
 ├── logs/
 │   └── scoring.txt
-└── mia/
-    └── user-test.json
+├── mia/
+│   └── user-test.json
+└── certificates/
+    └── [uploaded_images]
 
 src/config/
 ├── blacklist/
 │   └── zh.txt
-└── translate/
-    ├── HSK4_430002.json
-    ├── HSK5_530003.json
-    └── HSK6_630001.json
+├── translate/
+│   ├── HSK4_430002.json
+│   ├── HSK5_530003.json
+│   └── HSK6_630001.json
+└── verified/
+    └── google/
+        └── api-credentials.json
 ```
 
-## 15. API Testing
+### 25.3. Docker Configuration
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "run", "start:prod"]
+```
 
-### 15.1. Example Test Cases
+## 26. API Testing
 
-#### 15.1.1. HSK4 Test
+### 26.1. Example Test Cases
+
+#### 26.1.1. HSK4 Test
 ```bash
 curl -X POST "http://localhost:3000/scoring/hsk4/430002?aiType=1" \
   -H "Authorization: Bearer your_token_here" \
@@ -606,48 +2066,153 @@ curl -X POST "http://localhost:3000/scoring/hsk4/430002?aiType=1" \
   }'
 ```
 
-#### 15.1.2. System Info Test
+#### 26.1.2. Purchase Verification Test
+```bash
+curl -X POST "http://localhost:3000/purchase/verifiedGoogleStore" \
+  -H "Authorization: Bearer your_token_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subscriptionId": "migii_hsk_mia_lifetime",
+    "token": "google_play_token",
+    "device_id": "device_123",
+    "device": "Samsung Galaxy S21",
+    "platforms_version": "Android 12",
+    "app_version": "1.0.0"
+  }'
+```
+
+#### 26.1.3. System Info Test
 ```bash
 curl -X GET "http://localhost:3000/system/info"
 ```
 
-### 15.2. Swagger Documentation
+### 26.2. Swagger Documentation
 - Truy cập Swagger UI tại: `http://localhost:3000/api`
 - Đầy đủ API documentation với examples
 - Interactive testing interface
+- Authentication support trong Swagger UI
 
-## 16. Performance & Optimization
+### 26.3. Postman Collection
+- Import Postman collection từ Swagger export
+- Pre-configured environments (dev, staging, prod)
+- Automated token management
+- Test scripts cho validation
 
-### 16.1. Request Timeout
+## 27. Performance & Optimization
+
+### 27.1. Request Timeout
 - Tất cả scoring endpoints có timeout 60 giây
 - TimeoutInterceptor tự động hủy request quá thời gian
+- Graceful error handling cho timeout cases
 
-### 16.2. Database Optimization
-- Indexing trên các trường quan trọng
-- Connection pooling
-- Query optimization
+### 27.2. Database Optimization
+- Indexing trên các trường quan trọng:
+  - User ID trong tất cả bảng
+  - Transaction ID cho purchases
+  - Event ID cho rankings
+  - Created dates cho sorting
+- Connection pooling với retry logic
+- Query optimization với eager/lazy loading
 
-### 16.3. Caching Strategy
+### 27.3. Caching Strategy
 - Redis caching cho dữ liệu static
 - In-memory caching cho user sessions
 - File-based caching cho translation data
+- TTL-based cache invalidation
 
-## 17. Monitoring & Logging
+### 27.4. API Rate Limiting
+- Request limiting per user per endpoint
+- Global rate limiting cho expensive operations
+- Throttling cho OpenAI API calls
+- Queue system cho bulk operations
 
-### 17.1. Application Monitoring
-- Sentry error tracking
-- Performance metrics
-- Usage analytics
+## 28. Monitoring & Logging
 
-### 17.2. Logging
-- Structured logging với timestamp
-- Error logging với stack traces
-- ChatGPT usage logging với tokens
+### 28.1. Application Monitoring
+- Sentry error tracking với context information
+- Performance metrics collection
+- Usage analytics và user behavior tracking
+- Real-time dashboard cho system health
 
-### 17.3. Health Checks
-- Database connectivity
+### 28.2. Logging
+- Structured logging với timestamp và request ID
+- Error logging với full stack traces
+- ChatGPT usage logging với token consumption
+- File-based logging với rotation
+- Log levels: ERROR, WARN, INFO, DEBUG
+
+### 28.3. Health Checks
+- Database connectivity checks
 - Redis connectivity (nếu enabled)
-- OpenAI API status
+- OpenAI API status monitoring
+- File system access verification
+- Memory usage monitoring
+
+### 28.4. Alerting
+- Telegram notifications cho:
+  - Successful purchases
+  - Failed transactions
+  - System errors
+  - High usage alerts
+- Email notifications cho critical issues
+- Slack integration cho team notifications
+
+## 29. Testing Strategy
+
+### 29.1. Unit Testing
+```bash
+# Run unit tests
+npm run test
+
+# Run with coverage
+npm run test:cov
+
+# Watch mode
+npm run test:watch
+```
+
+### 29.2. Integration Testing
+```bash
+# Run integration tests
+npm run test:e2e
+
+# Test specific module
+npm run test:e2e -- --testNamePattern="Purchase"
+```
+
+### 29.3. Load Testing
+- Artillery.js cho load testing
+- K6 cho performance testing
+- Stress testing cho scoring endpoints
+- Database connection pool testing
+
+### 29.4. Security Testing
+- JWT token validation testing
+- Input sanitization testing
+- SQL injection prevention testing
+- Rate limiting effectiveness testing
+
+## 30. Backup & Recovery
+
+### 30.1. Database Backup
+```bash
+# Daily automated backup
+mysqldump -u username -p admin_hsk > backup_$(date +%Y%m%d).sql
+
+# Compressed backup
+mysqldump -u username -p admin_hsk | gzip > backup_$(date +%Y%m%d).sql.gz
+```
+
+### 30.2. File Backup
+- Automated backup của uploaded files
+- S3 integration cho cloud storage
+- Versioning cho configuration files
+
+### 30.3. Recovery Procedures
+- Point-in-time recovery procedures
+- Disaster recovery plan
+- Data migration scripts
+- Rollback procedures
 
 ---
 
@@ -656,6 +2221,7 @@ curl -X GET "http://localhost:3000/system/info"
 - **Swagger API Docs**: `/api` endpoint
 - **Health Check**: `/health` endpoint  
 - **System Info**: `/system/info` endpoint
+- **Metrics**: `/metrics` endpoint (if enabled)
 
 ## 🚀 Quick Start
 
@@ -675,19 +2241,60 @@ curl -X GET "http://localhost:3000/system/info"
    npm run migration:run
    ```
 
-4. **Start Development Server**
+4. **Seed Database (Optional)**
+   ```bash
+   npm run seed
+   ```
+
+5. **Start Development Server**
    ```bash
    npm run start:dev
    ```
 
-5. **Access API Documentation**
+6. **Access API Documentation**
    ```
    http://localhost:3000/api
    ```
 
+## 🔧 Development Commands
+
+```bash
+# Development
+npm run start:dev          # Start dev server with hot reload
+npm run start:debug        # Start with debug mode
+
+# Production
+npm run build              # Build for production
+npm run start:prod         # Start production server
+
+# Testing
+npm run test               # Run unit tests
+npm run test:e2e           # Run integration tests
+npm run test:cov           # Run tests with coverage
+
+# Database
+npm run migration:create   # Create new migration
+npm run migration:run      # Run migrations
+npm run migration:revert   # Revert last migration
+
+# Linting & Formatting
+npm run lint               # Run ESLint
+npm run format             # Format code with Prettier
+```
+
 ## 📞 Support
 
 Để được hỗ trợ kỹ thuật, vui lòng liên hệ team development hoặc tạo issue trong repository.
+
+### 📧 Contact Information
+- **Technical Support**: tech-support@migii.net
+- **Bug Reports**: Create issue in repository
+- **Feature Requests**: Create feature request in repository
+
+### 🔗 Useful Links
+- **API Documentation**: https://api-docs.HSK.migii.net
+- **Status Page**: https://status.migii.net
+- **Developer Portal**: https://developers.migii.net
 
 ---
 
