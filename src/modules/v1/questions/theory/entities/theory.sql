@@ -1,0 +1,14 @@
+use admin_hsk;
+CREATE TABLE theory_error (
+  id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+  user_id INT,
+  question_id INT,
+  platform VARCHAR(255),
+  content TEXT,
+  note VARCHAR(255) DEFAULT "",
+  status INT DEFAULT 1,
+  kind INT DEFAULT 0,
+  app_version VARCHAR(255) DEFAULT "",
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

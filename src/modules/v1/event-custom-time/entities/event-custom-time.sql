@@ -1,0 +1,11 @@
+use admin_hsk;
+CREATE TABLE event_custom_time (
+  id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+  event_id INT,
+  event_name VARCHAR(255),
+  start_time BIGINT,
+  end_time BIGINT,
+  active INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

@@ -1,0 +1,38 @@
+{
+    "vi": {
+        "original": "Đề thi ___",
+        "new": "Đề thi ___ (Mới)",
+        "key_exam_sample": "Đề thi mẫu",
+        "skill": ["Nghe", "Đọc", "Viết", "Nói", "Dịch"]
+    },
+    "en": {
+        "original": "Test ___",
+        "new": "Test ___ (New)",
+        "key_exam_sample": "Test sample",
+        "skill": ["Listening", "Reading", "Writing", "Speaking", "Translation"]
+    },
+    "ko": {
+        "original": "___ 번 시험지",
+        "new": "___ 번 시험지 (새로운)",
+        "key_exam_sample": "시험지 예시",
+        "skill": ["듣기", "읽기", "쓰기", "말하기", "번역"]
+    },
+    "ja": {
+        "original": "テスト ___",
+        "new": "テスト ___（新規）",
+        "key_exam_sample": "テスト サンプル",
+        "skill": ["聞き取り", "読解", "書き取り", "話す", "翻訳"]
+    },
+    "fr": {
+        "original": "Test ___",
+        "new": "Test ___ (Nouveau)",
+        "key_exam_sample": "Test sample",
+        "skill": ["Écoute", "Lecture", "Écriture", "Parler", "Traduire"]
+    },
+    "ru": {
+        "original": "Тест ___",
+        "new": "Тест ___ (Новый)",
+        "key_exam_sample": "Тест 예시",
+        "skill": ["Аудирование", "Чтение", "Письмо", "Говорение", "Перевод"]
+    }
+}

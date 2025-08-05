@@ -1,0 +1,1 @@
+export const saltRounds = parseInt(process.env.SALTROUNDS)
