@@ -777,6 +777,9 @@ CREATE TABLE info_user_divination (
 
 **Mô tả**: Tạo lịch sử xem bói cho người dùng
 
+**Headers**:
+- `Authorization`: Bearer token
+
 **Request Body**:
 ```json
 {
@@ -786,10 +789,25 @@ CREATE TABLE info_user_divination (
 }
 ```
 
+**Response**:
+```json
+{
+    "id": 1,
+    "infoUserDivinationId": 1,
+    "divinationId": 1,
+    "contentId": 1,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+}
+```
+
 #### 10.3.2. List History Divination
 **GET** `/divination`
 
 **Mô tả**: Lấy danh sách lịch sử xem bói
+
+**Headers**:
+- `Authorization`: Bearer token
 
 **Response**:
 ```json
@@ -810,6 +828,9 @@ CREATE TABLE info_user_divination (
 
 **Mô tả**: Lấy thông tin người dùng cho tính năng xem bói
 
+**Headers**:
+- `Authorization`: Bearer token
+
 **Response**:
 ```json
 {
@@ -825,6 +846,9 @@ CREATE TABLE info_user_divination (
 
 **Mô tả**: Tạo thông tin người dùng cho xem bói
 
+**Headers**:
+- `Authorization`: Bearer token
+
 **Request Body**:
 ```json
 {
@@ -833,10 +857,28 @@ CREATE TABLE info_user_divination (
 }
 ```
 
+**Response**:
+```json
+{
+    "id": 1,
+    "userId": 123,
+    "username": "Nguyễn Văn A",
+    "birthday": "1990-02-14T00:00:00.000Z",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+}
+```
+
 #### 10.3.5. Get History Detail
 **GET** `/divination/:divinationId`
 
 **Mô tả**: Lấy chi tiết lịch sử xem bói theo ID
+
+**Headers**:
+- `Authorization`: Bearer token
+
+**Parameters**:
+- `divinationId`: ID của quẻ (path parameter)
 
 **Response**:
 ```json
@@ -851,12 +893,22 @@ CREATE TABLE info_user_divination (
 ]
 ```
 
-### 10.4. Features
+### 10.4. Error Handling
+
+| Status Code | Description | Meaning |
+|-------------|-------------|--------|
+| 200 | OK | Thành công |
+| 400 | BAD REQUEST | Lỗi trong quá trình tạo dữ liệu |
+| 404 | NOT FOUND | Không tìm thấy thông tin người dùng |
+| 409 | CONFLICT | Dữ liệu bị trùng lặp |
+
+### 10.5. Features
 
 - **Personal Info Management**: Quản lý thông tin cá nhân cho xem bói
 - **History Tracking**: Theo dõi lịch sử các lần xem bói
 - **Content Grouping**: Nhóm nội dung theo divination ID
 - **Data Validation**: Kiểm tra duplicate và validate data
+- **Birthday Format**: Hỗ trợ định dạng ngày sinh DD/MM/YYYY
 
 ## 11. Ebook Module
 
@@ -2474,6 +2526,9 @@ CREATE TABLE ranking (
 
 **Mô tả**: Lấy thông tin tổng kết của người dùng
 
+**Headers**:
+- `Authorization`: Bearer token
+
 **Response**:
 ```json
 {
@@ -2491,6 +2546,9 @@ CREATE TABLE ranking (
 
 **Mô tả**: Lấy nhiệm vụ theo level
 
+**Headers**:
+- `Authorization`: Bearer token
+
 **Query Parameters**:
 ```json
 {
@@ -2498,10 +2556,37 @@ CREATE TABLE ranking (
 }
 ```
 
+**Response**:
+```json
+{
+    "message": "Get mission successfully.",
+    "data": [
+        {
+            "id": 1,
+            "mission_id": 1,
+            "mission_name": "Luyện tập 10 câu",
+            "mission_display": "Luyện tập 10 câu hỏi",
+            "mission_code": "PRACTICE_10",
+            "mission_kind": "FREE",
+            "mission_type": "DAILY",
+            "mission_level": 1,
+            "mission_count": 10,
+            "mission_progress": 5,
+            "mission_point": 50,
+            "time_start": 1672531200000,
+            "time_end": 1672617600000
+        }
+    ]
+}
+```
+
 #### 26.3.3. Synchronize Missions
 **PUT** `/wrapup/mission/synchronize`
 
 **Mô tả**: Đồng bộ tiến độ nhiệm vụ
+
+**Headers**:
+- `Authorization`: Bearer token
 
 **Request Body**:
 ```json
@@ -2515,26 +2600,92 @@ CREATE TABLE ranking (
 }
 ```
 
+**Response**:
+```json
+{
+    "message": "Synchronize mission successfully.",
+    "data": {
+        "updated": 1
+    }
+}
+```
+
 #### 26.3.4. Get Ranking
 **GET** `/wrapup/mission/ranking`
 
 **Mô tả**: Lấy bảng xếp hạng
 
+**Headers**:
+- `Authorization`: Bearer token
+
+**Query Parameters**:
+```json
+{
+    "page": 1,
+    "limit": 10
+}
+```
+
 **Response**:
 ```json
 {
-    "overall_ranking": [
-        {
-            "user_id": 123,
-            "total_scores": 1500,
-            "name": "User A",
-            "rank": 1
+    "message": "Get ranking successfully.",
+    "data": {
+        "overall_ranking": [
+            {
+                "user_id": 123,
+                "total_scores": 1500,
+                "name": "User A",
+                "rank": 1
+            }
+        ],
+        "current_user_ranking": {
+            "user_id": 456,
+            "total_scores": 800,
+            "rank": 15
         }
-    ],
-    "current_user_ranking": {
-        "user_id": 456,
-        "total_scores": 800,
-        "rank": 15
+    }
+}
+```
+
+#### 26.3.5. Add Mission Data (Admin)
+**POST** `/wrapup/mission`
+
+**Mô tả**: Đẩy data nhiệm vụ lên database (Admin only)
+
+**Content-Type**: `multipart/form-data`
+
+**Request Body**:
+```json
+{
+    "missionData": "file_upload"
+}
+```
+
+**Response**:
+```json
+{
+    "message": "Add mission data successfully.",
+    "data": {
+        "inserted": 10
+    }
+}
+```
+
+#### 26.3.6. Delete Wrapup Missions (Admin)
+**DELETE** `/wrapup/mission`
+
+**Mô tả**: Xoá tất cả ranking, đồng bộ, nhiệm vụ (Admin only)
+
+**Headers**:
+- `Authorization`: Bearer token with super key
+
+**Response**:
+```json
+{
+    "message": "Delete wrapup missions successfully.",
+    "data": {
+        "deleted": 150
     }
 }
 ```
@@ -2566,12 +2717,140 @@ CREATE TABLE ranking (
 - **API**: `POST /reason-cancel`
 - **Data**: Lưu trữ feedback từ người dùng
 
-### 27.2. User Synchronized Practice Module  
-- **Purpose**: Đồng bộ lịch sử luyện tập
-- **API**: `GET/PUT /user-synchronized-practice/:historyId`
-- **Features**: Xem và cập nhật lịch sử, tích hợp AI result
+## 27. User Synchronized Practice Module
 
-### 27.3. Theory Error Report Module
-- **Purpose**: Báo cáo lỗi trong phần lý thuyết
-- **API**: `POST /question/report-theory`
-- **Types**: Từ vựng (0), Ngữ pháp (1)
+### 27.1. Mô tả
+Module quản lý và đồng bộ lịch sử luyện tập của người dùng, tích hợp với kết quả AI scoring.
+
+### 27.2. Database Schema
+
+#### 27.2.1. User Synchronized Practice Entity
+```sql
+CREATE TABLE users_synchronized_practice (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    level INT,
+    sync_type TEXT,
+    result TEXT,
+    content TEXT,
+    key_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### 27.3. API Endpoints
+
+#### 27.3.1. Get History
+**GET** `/user-synchronized-practice/:historyId`
+
+**Mô tả**: Lấy lịch sử luyện tập theo ID
+
+**Headers**:
+- `Authorization`: Bearer token
+
+**Response**:
+```json
+{
+    "Err": null,
+    "User": {
+        "content": {...},
+        "result": {...},
+        "sync_type": "practice"
+    },
+    "aiResult": [
+        {
+            "questionId": 40928,
+            "result": {...},
+            "status": true
+        }
+    ]
+}
+```
+
+#### 27.3.2. Update History
+**PUT** `/user-synchronized-practice/:historyId`
+
+**Mô tả**: Cập nhật điểm writing cho lịch sử luyện tập
+
+**Headers**:
+- `Authorization`: Bearer token
+
+**Request Body**:
+```json
+{
+    "scoringWriting": "25"
+}
+```
+
+**Response**:
+```json
+{
+    "Err": null,
+    "status": 200,
+    "msg": "Success!",
+    "User": {
+        "id": 123,
+        "user_id": 456,
+        "level": 4,
+        "key_id": "test_123",
+        "result": {
+            "scoreWriting": 25,
+            "scoreListening": 80,
+            "scoreReading": 75
+        }
+    }
+}
+```
+
+### 27.4. Features
+
+- **History Synchronization**: Đồng bộ lịch sử luyện tập
+- **AI Result Integration**: Tích hợp kết quả chấm điểm AI
+- **Score Management**: Quản lý điểm các phần thi
+- **Error Handling**: Xử lý lỗi với Sentry integration
+
+## 28. Theory Error Report Module
+
+### 28.1. Mô tả
+Module cho phép người dùng báo cáo lỗi trong phần lý thuyết, giúp cải thiện chất lượng nội dung.
+
+### 28.2. API Endpoints
+
+#### 28.2.1. Report Theory Error
+**POST** `/question/report-theory`
+
+**Mô tả**: Báo cáo lỗi trong phần lý thuyết
+
+**Headers**:
+- `Authorization`: Bearer token
+
+**Request Body**:
+```json
+{
+    "theory_id": 123,
+    "type": 0,
+    "content": "Từ vựng này có lỗi chính tả"
+}
+```
+
+**Response**:
+```json
+{
+    "message": "Report theory error successfully",
+    "data": {
+        "id": 1,
+        "theory_id": 123,
+        "type": 0,
+        "content": "Từ vựng này có lỗi chính tả",
+        "created_at": "2024-01-01T00:00:00Z"
+    }
+}
+```
+
+### 28.3. Error Types
+
+- **Type 0**: Lỗi từ vựng
+- **Type 1**: Lỗi ngữ pháp
+- **Type 2**: Lỗi phát âm
+- **Type 3**: Lỗi dịch nghĩa
