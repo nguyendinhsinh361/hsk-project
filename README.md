@@ -2,13 +2,13 @@
 
 ## Tổng quan
 
-Hệ thống API quản lý Super Password Key cho ứng dụng Migii HSK, sử dụng NestJS framework với TypeORM để quản lý cơ sở dữ liệu.
+Hệ thống API quản lý Super Password Key và AI Result cho ứng dụng Migii HSK, sử dụng NestJS framework với TypeORM để quản lý cơ sở dữ liệu.
 
 ## API Endpoints
 
 ### 1. System Information
 
-#### GET `/system/info`
+#### 1.1. GET `/system/info`
 Lấy thông tin thời gian hiện tại của hệ thống.
 
 **Response:**
@@ -18,9 +18,7 @@ Lấy thông tin thời gian hiện tại của hệ thống.
 }
 ```
 
-### 1.1. Super Password Key Management
-
-#### GET `/system/supper-key`
+#### 1.2. GET `/system/supper-key`
 Tạo và lấy Super Password Key mới.
 
 **Headers:**
@@ -37,18 +35,38 @@ Tạo và lấy Super Password Key mới.
 }
 ```
 
-## Cấu trúc Database
+### 2. AI Result Management
 
-### Table: `supper_key` (Database: `admin_hsk`)
+#### 2.1. PUT `/ai-result`
+Cập nhật history ID cho các AI result của người dùng.
 
-| Cột | Kiểu dữ liệu | Mô tả |
-|-----|-------------|--------|
-| `id` | int (Auto increment) | Primary key |
-| `super_pass` | varchar(255) | Mật khẩu super được tạo |
-| `key_use` | varchar(255) | Mục đích sử dụng key |
-| `key_name` | varchar(255) | Tên của key |
-| `created_at` | timestamp | Thời gian tạo |
-| `updated_at` | timestamp | Thời gian cập nhật |
+**Headers:**
+- Yêu cầu middleware authentication với User ID
+- Rate limiting được áp dụng
+
+**Body Parameters:**
+```json
+{
+  "aiScoringIds": [1, 2, 3, 4],
+  "historyId": "ID history của lần luyện tập được gửi lên"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Update history for all questions successfully.",
+  "data": {}
+}
+```
+
+**Error Response:**
+```json
+{
+  "message": "The Ids you transmitted are not satisfied.",
+  "data": {}
+}
+```
 
 ## Data Transfer Objects (DTOs)
 
@@ -61,6 +79,27 @@ Tạo và lấy Super Password Key mới.
 }
 ```
 
+### 2.1. AIRessultDto
+```typescript
+{
+  userId: number;        // Required - ID người dùng
+  historyId?: number;    // Optional - ID lịch sử
+  questionId: number;    // Required - ID câu hỏi
+  result: string;        // Required - Kết quả AI
+  userAnswer: string;    // Required - Câu trả lời người dùng
+  aiType: number;        // Required - Loại AI (default: 1)
+  idsChatGPT: string;    // Required - IDs ChatGPT
+}
+```
+
+### 2.2. AIRessultUpdateDto
+```typescript
+{
+  aiScoringIds: number[]; // Optional - Mảng ID cần update (default: [1,2,3,4])
+  historyId: string;      // Optional - ID history lần luyện tập
+}
+```
+
 ## Thuật toán tạo Super Password
 
 Super Password được tạo theo công thức:
@@ -70,8 +109,3 @@ Super Password được tạo theo công thức:
 4. Chuyển thành chữ hoa
 
 **Ví dụ:** `ABC123EUP`
-
-## Middleware
-
-- **LimitedRequestsMiddleware**: Giới hạn số lượng request
-- **SupperKeyMiddleware**: Xác thực Super Key
