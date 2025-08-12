@@ -434,9 +434,3 @@ const getScoringHSK4_Detail = (input, data) => {
 - **Timeout:** 60 seconds per request
 - **Cause:** AI processing takes too long
 - **Solution:** Retry or contact support
-
-### System Errors
-
-- **Sentry Integration:** All errors logged to Sentry
-- **Graceful Degradation:** Return error info without losing user data
-- **Token Refund:** Consider refunding tokens for system errors

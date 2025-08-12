@@ -559,5 +559,3 @@ if (!currentRouteDetailProcess.hasOwnProperty("result")) {
   currentRouteDetailProcess.result.questions.push(...result.questions);
 }
 ```
-
-Roadmap API cung cấp hệ thống adaptive learning hoàn chỉnh với đánh giá năng lực, tạo lộ trình cá nhân hóa, theo dõi tiến độ chi tiết và khả năng điều chỉnh lộ trình dựa trên kết quả thực tế của người học.

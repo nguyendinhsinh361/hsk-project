@@ -422,5 +422,3 @@ const newExpiry = currentTime + packageDuration + remainingTime;
 - **Store verification** với retry logic
 - **Price validation** với tolerance
 - **Telegram notifications** cho admin monitoring
-
-Purchase API cung cấp hệ thống thanh toán đa nền tảng với store verification, banking integration và comprehensive affiliate tracking.

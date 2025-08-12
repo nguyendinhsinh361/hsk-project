@@ -598,10 +598,3 @@ const check = await bcrypt.compare(
 #### Invalid Token Format
 - **Apple:** JWT verification failure
 - **Google:** Invalid id_token
-
-### Error Recovery
-
-- **Sentry Monitoring:** All errors logged
-- **Graceful Degradation:** Partial success handling  
-- **Retry Logic:** Token generation retry
-- **Fallback Mechanisms:** Default avatar, empty premium data

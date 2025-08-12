@@ -68,11 +68,7 @@ Cập nhật history ID cho các AI result của người dùng trong một lầ
 ```json
 {
   "message": "Update history for all questions successfully.",
-  "data": {
-    "updatedCount": 4,
-    "historyId": "HSK_PRACTICE_20240811_001",
-    "updatedIds": [1, 2, 3, 4]
-  }
+  "data": {}
 }
 ```
 
@@ -166,11 +162,7 @@ Content-Type: application/json
 // Response
 {
   "message": "Update history for all questions successfully.",
-  "data": {
-    "updatedCount": 4,
-    "historyId": "HSK_PRACTICE_20240811_001",
-    "updatedIds": [1, 2, 3, 4]
-  }
+  "data": {}
 }
 ```
 
@@ -315,73 +307,3 @@ CREATE TABLE ai_results (
 | 422       | Unprocessable Entity    | Validation errors                  |
 | 429       | Too Many Requests       | Rate limit exceeded                |
 | 500       | Internal Server Error   | Server-side error                  |
-
-### Error Response Format
-
-```json
-{
-  "message": "Human-readable error description",
-  "data": {
-    "errorCode": "SPECIFIC_ERROR_CODE",
-    "details": "Additional error information",
-    "timestamp": "2024-08-11T10:30:00Z"
-  }
-}
-```
-
-### Specific Error Scenarios
-
-#### Invalid AI Scoring IDs
-
-```json
-{
-  "message": "The Ids you transmitted are not satisfied.",
-  "data": {
-    "invalidIds": [999, 1000],
-    "validIds": [1, 2, 3],
-    "reason": "IDs not found or access denied",
-    "errorCode": "INVALID_AI_SCORING_IDS"
-  }
-}
-```
-
-#### History ID Conflict
-
-```json
-{
-  "message": "History ID already exists for some records.",
-  "data": {
-    "conflictIds": [2, 3],
-    "existingHistoryId": "HSK_PRACTICE_20240810_005",
-    "errorCode": "HISTORY_ID_CONFLICT"
-  }
-}
-```
-
-### Retry Logic
-
-Đối với các lỗi tạm thời (5xx, 429), client nên implement retry logic:
-
-```javascript
-const maxRetries = 3;
-let retryCount = 0;
-let retryDelay = 1000; // 1 second
-
-async function updateAIResultWithRetry(data) {
-  while (retryCount < maxRetries) {
-    try {
-      const response = await updateAIResult(data);
-      return response;
-    } catch (error) {
-      if (error.status === 429 || error.status >= 500) {
-        retryCount++;
-        await delay(retryDelay);
-        retryDelay *= 2; // Exponential backoff
-      } else {
-        throw error;
-      }
-    }
-  }
-  throw new Error('Max retry attempts reached');
-}
-```

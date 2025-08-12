@@ -389,5 +389,3 @@ const questions = await repository
 - **Report Reasons:** Inappropriate content, spam, harassment
 - **Admin Review:** Manual review system
 - **Auto Actions:** High report count → auto hide
-
-Questions Management API cung cấp hệ thống comprehensive cho việc practice questions với premium access control, community features và comprehensive error reporting.

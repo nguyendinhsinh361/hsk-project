@@ -106,27 +106,6 @@ Tạo chứng chỉ mới cho người dùng với upload ảnh chứng chỉ.
 - **Unique constraint:** `(user_id, month_year)` phải unique
 - **Auto status:** Chứng chỉ mới tạo có `active = 0` (PENDING)
 
-#### Ví dụ sử dụng
-
-```javascript
-// FormData request
-const formData = new FormData();
-formData.append('username', 'Nguyễn Văn A');
-formData.append('email', 'user@example.com');
-formData.append('phoneNumber', '0123456789');
-formData.append('certificateImg', fileInput.files[0]);
-formData.append('note', 'Chứng chỉ HSK 5');
-formData.append('share', '1');
-
-fetch('/certificate', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer user-token'
-  },
-  body: formData
-});
-```
-
 ---
 
 ### GET `/certificate/setup-time`
@@ -438,21 +417,6 @@ Cập nhật ảnh chứng chỉ người dùng đã gửi lên.
 }
 ```
 
-#### Ví dụ sử dụng
-
-```javascript
-// FormData request
-const formData = new FormData();
-formData.append('certificateImg', newImageFile);
-
-fetch('/certificate/update-image', {
-  method: 'PUT',
-  headers: {
-    'Authorization': 'Bearer user-token'
-  },
-  body: formData
-});
-```
 
 ---
 

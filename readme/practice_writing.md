@@ -526,5 +526,3 @@ enum FilterCommentOption {
 - **Premium features:** Question creation requires Premium
 - **Content ownership:** Users can only modify own content
 - **Moderation:** Report system cho community moderation
-
-Practice Writing API cung cấp một platform hoàn chỉnh cho việc luyện tập viết HSK với tính năng community interaction, vote system và content moderation.

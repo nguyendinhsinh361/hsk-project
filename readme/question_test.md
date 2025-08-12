@@ -405,5 +405,3 @@ enum QuestionTestVersionEnum {
 - **Skill Suffix:** Auto-append skill name cho skill tests
 - **Language Mapping:** JSON config cho multi-language titles
 - **ID Suffix:** Version 2 thêm "(ID: xxx)" vào title
-
-Question Test API cung cấp hệ thống quản lý đề thi HSK comprehensive với multi-language support, premium access control và flexible test types.
